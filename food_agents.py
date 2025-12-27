@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from typing import Optional
@@ -201,6 +202,14 @@ async def llm_extract_food_filters(
 
     return max_travel_time, min_rating, min_reviews, travel_mode
 
+
+def _fallback_extract_dish(text: str) -> str:
+    matches = list(re.finditer(r"([\u4e00-\u9fffA-Za-z0-9]+?)(店|餐廳)", text))
+    if not matches:
+        return ""
+    last = matches[-1]
+    return (last.group(1) or "").strip()
+
 def _strip_location_suffix(text: str) -> str:
     suffixes = ("附近", "周邊", "周圍", "附近的", "週邊", "週圍")
     for s in suffixes:
@@ -259,6 +268,8 @@ async def _apply_style(text: str, guild_id: Optional[int]) -> str:
 
 async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> str:
     dish, location_label = await llm_extract_food_query(user_text)
+    if not dish:
+        dish = _fallback_extract_dish(user_text)
     if not location_label:
         location_label = _fallback_extract_location(user_text)
     if not location_label:
@@ -295,7 +306,7 @@ async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> str:
     )
 
     prompt = "".join([
-        "你是成大附近的美食推薦助理。\n",
+        "你是成大附近的美食推薦助理，回覆要有人情味、口吻自然、資訊完整。\n",
         _style_hint(guild_id),
         f"使用者需求：{user_text}\n",
         f"搜尋地點：{location_label}\n",
@@ -305,16 +316,21 @@ async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> str:
         f"天氣資料：{json.dumps(weather, ensure_ascii=False)}\n",
         "搜尋結果（包含距離/評分/評論數/價位/必點/評論摘要）：\n",
         f"{food_text}\n\n",
-        "請用繁中給 3~5 家推薦，格式示例：\n",
-        "1. 店名\n",
-        "   距離/時間：xx\n",
-        "   價位：xx\n",
-        "   評分：xx\n",
-        "   必點：菜名1；菜名2；菜名3（若沒有必點請寫：暫無明確推薦）\n",
-        "   地圖：直接貼上 Google Maps 連結（必填，不可省略）\n",
-        "   推薦理由：一句話\n",
-        "   營業：營業時間或未提供\n",
-        "必須把「必點」欄位列出具體菜名，避免只寫“推薦招牌”；每家都要附 Google Maps 連結。",
+        "請用繁中給 3~5 家推薦，內容要更豐富、有情感，但避免冗長。\n",
+        "每家請包含：店名（可加簡短亮點標語）、評分與評論數、交通時間、地圖連結、營業時間、推薦菜品（至少 2 道），以及一段「推薦理由」（1~2 句）。\n",
+        "可以補充 1 句貼心提示（例如適合的場合或天氣）。\n",
+        "格式示例：\n",
+        "[1️⃣] 店名（亮點）\n",
+        "   評分：x.x（xxxx 則評論）\n",
+        "   車程/步行：xx 分鐘\n",
+        "   地圖：Google Maps 連結\n",
+        "   營業時間：xx\n",
+        "   推薦菜品：\n",
+        "   • 菜名1 — 亮點描述\n",
+        "   • 菜名2 — 亮點描述\n",
+        "   推薦理由：一句到兩句\n",
+        "   小提醒：一句話\n",
+        "必須把「推薦菜品」寫成具體菜名，避免只寫“推薦招牌”；每家都要附 Google Maps 連結。",
     ])
 
     try:
