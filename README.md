@@ -1,4 +1,4 @@
-# Discord Eat Bot
+# Discord Hood Hunter Bot
 
 ## Setup
 1) Create a virtualenv and install deps:
