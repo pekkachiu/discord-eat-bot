@@ -39,13 +39,35 @@ def extract_nutrition_target(text: str) -> str:
 
 def extract_city(text: str) -> str:
     mapping = {
+        "基隆": "Keelung",
+        "新北": "New Taipei",
+        "新北市": "New Taipei",
         "台南": "Tainan",
         "臺南": "Tainan",
         "台北": "Taipei",
         "臺北": "Taipei",
+        "桃園": "Taoyuan",
+        "新竹": "Hsinchu",
+        "新竹市": "Hsinchu",
+        "新竹縣": "Hsinchu",
+        "苗栗": "Miaoli",
         "高雄": "Kaohsiung",
         "台中": "Taichung",
         "臺中": "Taichung",
+        "彰化": "Changhua",
+        "南投": "Nantou",
+        "雲林": "Yunlin",
+        "嘉義": "Chiayi",
+        "嘉義市": "Chiayi",
+        "嘉義縣": "Chiayi",
+        "屏東": "Pingtung",
+        "宜蘭": "Yilan",
+        "花蓮": "Hualien",
+        "台東": "Taitung",
+        "臺東": "Taitung",
+        "澎湖": "Penghu",
+        "金門": "Kinmen",
+        "連江": "Lienchiang",
     }
     for k, v in mapping.items():
         if k in text:
@@ -55,9 +77,26 @@ def extract_city(text: str) -> str:
 
 # Find user mentioned city, return (English city, search location label)
 def detect_food_location(text: str) -> Tuple[str, str]:
+    station_match = re.search(r"([\u4e00-\u9fffA-Za-z0-9]+(?:火車站|車站|捷運站))", text)
+    if station_match:
+        label = station_match.group(1)
+        city_keywords = [
+            (["台北", "臺北", "松山", "信義", "大安", "中山", "士林", "內湖", "文山", "北投", "南港", "萬華", "中正", "大同"], "Taipei"),
+            (["新北", "新北市", "板橋", "三重", "新莊", "中和", "永和", "新店", "土城", "蘆洲", "汐止"], "New Taipei"),
+            (["桃園", "中壢", "龜山", "蘆竹", "大園", "八德"], "Taoyuan"),
+            (["台中", "臺中"], "Taichung"),
+            (["台南", "臺南", "成大", "成功大學"], "Tainan"),
+            (["高雄"], "Kaohsiung"),
+        ]
+        for keywords, city in city_keywords:
+            if any(k in text for k in keywords):
+                return (city, label)
+        return ("Tainan", label)
+
     mapping = [
         (["台北", "臺北", "台北市"], ("Taipei", "台北市")),
         (["新北", "新北市"], ("New Taipei", "新北市")),
+        (["桃園", "桃園市"], ("Taoyuan", "桃園市")),
         (["台中", "臺中", "台中市"], ("Taichung", "台中市")),
         (["高雄", "高雄市"], ("Kaohsiung", "高雄市")),
         (["台南", "臺南", "台南市", "成功大學", "成大"], ("Tainan", "國立成功大學")),

@@ -4,13 +4,14 @@ import discord
 from discord import app_commands
 
 from config import DISCORD_TOKEN
-from food_agents import run_food_agent
+from food_agents import run_food_agent, _apply_style
 from nutrition import llm_translate_list, llm_translate_single, usda_food_nutrition
 from response_utils import send_food_result
 from router import run_agent
 from spin import pick_spin_candidates
 from text_utils import make_urls_clickable
 from wishlist import list_wishlist, remove_from_wishlist
+from style_store import set_guild_style, get_guild_style
 
 # ====== Discord bot（Slash command + 一般聊天）=====
 # 紀錄每個 guild 是否開啟一般訊息回覆（預設 True）；重啟會重置
@@ -70,7 +71,7 @@ async def eat(interaction: discord.Interaction, 需求: str):
     if interaction.guild_id is not None and not bot_enabled(interaction.guild_id):
         await interaction.followup.send("目前已關閉此伺服器的回覆功能。請用 /bot_toggle on 開啟。")
         return
-    ans = await run_food_agent(需求)
+    ans = await run_food_agent(需求, interaction.guild_id)
     await send_food_result(interaction.followup.send, ans)
 
 
@@ -146,7 +147,7 @@ async def spin(
         return
 
     await interaction.followup.send(f"🔎 正在搜尋「{last_choice}」附近餐廳…")
-    ans = await run_food_agent(last_choice)
+    ans = await run_food_agent(last_choice, interaction.guild_id)
     await send_food_result(interaction.followup.send, ans)
 
 
@@ -156,6 +157,7 @@ async def nutrition(interaction: discord.Interaction, 食物: str):
     await interaction.response.defer(thinking=True)
     ingr = await llm_translate_single(食物)
     result = await usda_food_nutrition(ingr)
+    result = await _apply_style(result, interaction.guild_id)
     await interaction.followup.send(result)
 
 
@@ -173,6 +175,7 @@ async def recipe_nutrition(interaction: discord.Interaction, 食材列表: str):
     else:
         note = ""
     result = await usda_food_nutrition(converted[0])
+    result = await _apply_style(result, interaction.guild_id)
     await interaction.followup.send(note + result)
 
 
@@ -218,6 +221,22 @@ async def sync_commands(interaction: discord.Interaction):
         await interaction.followup.send(f"已同步全域指令共 {len(synced)} 個。")
     except Exception as e:
         await interaction.followup.send(f"同步失敗：{e}")
+
+
+@dc.tree.command(name="style", description="設定伺服器共用的回覆風格")
+@app_commands.describe(風格="例如：簡短、幽默、正式、條列、可愛")
+async def style(interaction: discord.Interaction, 風格: str):
+    if interaction.guild_id is None:
+        await interaction.response.send_message("請在伺服器頻道使用此指令。", ephemeral=True)
+        return
+    style_text = 風格.strip()
+    if not style_text:
+        current = get_guild_style(interaction.guild_id)
+        msg = f"目前風格：{current}" if current else "目前沒有設定風格。"
+        await interaction.response.send_message(msg, ephemeral=True)
+        return
+    set_guild_style(interaction.guild_id, style_text)
+    await interaction.response.send_message(f"已設定此伺服器風格：{style_text}", ephemeral=False)
 
 
 dc.run(DISCORD_TOKEN)

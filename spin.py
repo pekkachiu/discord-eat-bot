@@ -57,5 +57,5 @@ async def run_spin_agent(
         delay = min(delay + 0.05, 0.6)
 
     await msg.edit(content=f"🎯 轉盤結果：**{last_choice}**\n🔎 正在搜尋餐廳…")
-    food_ans = await run_food_agent(last_choice)
+    food_ans = await run_food_agent(last_choice, guild_id)
     await send_food_result(channel.send, food_ans)

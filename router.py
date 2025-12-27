@@ -22,28 +22,28 @@ def is_nutrition_query(text: str) -> bool:
 async def run_agent(message) -> str:
     user_text = message.content
     label = await llm_route_intent(user_text)
+    guild_id = message.guild.id if message.guild else None
     if label == "nutrition":
-        return await run_nutrition_agent(user_text)
+        return await run_nutrition_agent(user_text, guild_id)
     if label == "weather":
-        return await run_weather_agent(user_text)
+        return await run_weather_agent(user_text, guild_id)
     if label == "food":
-        ans = await run_food_agent(user_text)
+        ans = await run_food_agent(user_text, guild_id)
         await send_food_result(message.channel.send, ans)
         return ""
     if label == "spin":
         source = detect_spin_source(user_text)
-        guild_id = message.guild.id if message.guild else None
         await run_spin_agent(message.channel, guild_id, source=source)
         return ""
     if label == "chat":
-        return await run_chat_agent(user_text)
+        return await run_chat_agent(user_text, guild_id)
 
     if is_nutrition_query(user_text):
-        return await run_nutrition_agent(user_text)
+        return await run_nutrition_agent(user_text, guild_id)
     if is_weather_query(user_text):
-        return await run_weather_agent(user_text)
+        return await run_weather_agent(user_text, guild_id)
     if is_food_query(user_text):
-        ans = await run_food_agent(user_text)
+        ans = await run_food_agent(user_text, guild_id)
         await send_food_result(message.channel.send, ans)
         return ""
-    return await run_chat_agent(user_text)
+    return await run_chat_agent(user_text, guild_id)
