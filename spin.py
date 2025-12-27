@@ -25,6 +25,8 @@ def pick_spin_candidates(
 ) -> list[str]:
     if items:
         return items
+    if source is None:
+        return DEFAULT_SPIN_CANDIDATES
     if source == "default":
         return DEFAULT_SPIN_CANDIDATES
     if source == "wishlist" and guild_id is not None:
