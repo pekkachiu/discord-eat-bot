@@ -126,3 +126,55 @@ def infer_meal_by_time(now: datetime) -> str:
     if 17 <= hour < 21:
         return "晚餐"
     return "宵夜"
+
+
+def extract_food_filters(
+    text: str,
+    default_max_travel_time: int = 20,
+    default_min_rating: float = 3.5,
+    default_min_reviews: int = 0,
+    default_travel_mode: str = "walking",
+) -> Tuple[int, float, int, str]:
+    max_travel_time = default_max_travel_time
+    min_rating = default_min_rating
+    min_reviews = default_min_reviews
+    travel_mode = default_travel_mode
+
+    if re.search(r"(車程|開車|駕車|行車|車行|汽車)", text):
+        travel_mode = "driving"
+    elif re.search(r"(步行|走路)", text):
+        travel_mode = "walking"
+    elif re.search(r"(騎車|自行車|腳踏車|單車)", text):
+        travel_mode = "bicycling"
+
+    time_match = re.search(
+        r"(?:車程|開車|駕車|行車|車行|步行|走路|騎車|自行車|腳踏車|單車)?\s*(\d{1,3})\s*分(?:鐘)?\s*(?:內|以內|左右)?",
+        text,
+    )
+    if time_match:
+        try:
+            max_travel_time = int(time_match.group(1))
+        except ValueError:
+            pass
+
+    rating_match = re.search(
+        r"(?:評分|評價)?\s*([0-5](?:\.\d)?)\s*星?\s*(?:以上|起|或以上)",
+        text,
+    )
+    if rating_match:
+        try:
+            min_rating = float(rating_match.group(1))
+        except ValueError:
+            pass
+
+    reviews_match = re.search(
+        r"(?:至少|最少)?\s*(\d{2,6})\s*(?:則|个|個)?\s*評?論(?:數量)?\s*(?:以上|起|或以上)?",
+        text,
+    )
+    if reviews_match:
+        try:
+            min_reviews = int(reviews_match.group(1))
+        except ValueError:
+            pass
+
+    return max_travel_time, min_rating, min_reviews, travel_mode

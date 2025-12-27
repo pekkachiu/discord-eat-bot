@@ -44,12 +44,12 @@ class Tools:
         loc = data["results"][0]["geometry"]["location"]
         return f"{loc['lat']},{loc['lng']}"
 
-    def _distance_minutes(self, origin: str, destination: str) -> int:
+    def _distance_minutes(self, origin: str, destination: str, mode: str = "walking") -> int:
         """回傳行程時間（分鐘）"""
         params = {
             "origins": origin,
             "destinations": destination,
-            "mode": "walking",
+            "mode": mode,
             "key": self.GOOGLE_API_KEY,
             "language": "zh-TW",
         }
@@ -121,10 +121,14 @@ class Tools:
         max_travel_time: int = 20,
         min_rating: float = 3.5,
         min_reviews: int = 0,
+        travel_mode: str = "walking",
     ) -> str:
         """
         搜尋餐廳並回傳給 LLM 使用的推薦資料（文字格式）
         """
+        if travel_mode not in {"walking", "driving", "bicycling", "transit"}:
+            travel_mode = "walking"
+
         origin = self._geocode(location)
 
         params = {
@@ -154,7 +158,7 @@ class Tools:
                 continue
 
             dest = f"{item['geometry']['location']['lat']},{item['geometry']['location']['lng']}"
-            travel_time = self._distance_minutes(origin, dest)
+            travel_time = self._distance_minutes(origin, dest, travel_mode)
 
             if travel_time > max_travel_time:
                 continue
@@ -189,13 +193,20 @@ class Tools:
             "",
         ]
 
+        mode_label = {
+            "walking": "步行",
+            "driving": "車程",
+            "bicycling": "騎車",
+            "transit": "大眾運輸",
+        }.get(travel_mode, "移動")
+
         for i, r in enumerate(results, 1):
             hours = r["opening_hours"]
             hours_text = hours[0] if hours else "營業時間未提供"
             rec_text = ', '.join(r['recommended_items']) if r['recommended_items'] else '暫無明確推薦'
             output.append(
                 f"{i}. {r['name']}\n"
-                f"   ⏱️ 約 {r['travel_time_min']} 分鐘步行\n"
+                f"   ⏱️ 約 {r['travel_time_min']} 分鐘{mode_label}\n"
                 f"   ⭐ 評分 {r['rating']}（{r['reviews']} 則評論）\n"
                 f"   💰 價位等級：{r['price_level'] if r['price_level'] is not None else '未知'}\n"
                 f"   ⏰ 營業：{hours_text}\n"

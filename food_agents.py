@@ -15,6 +15,7 @@ from text_utils import (
     detect_food_location,
     detect_meal_from_text,
     extract_city,
+    extract_food_filters,
     extract_nutrition_target,
     infer_meal_by_time,
 )
@@ -81,6 +82,7 @@ async def find_food(
     max_travel_time: int = 20,
     min_rating: float = 3.5,
     min_reviews: int = 0,
+    travel_mode: str = "walking",
     ) -> str:
     return await asyncio.to_thread(
         food.find_food,
@@ -89,6 +91,7 @@ async def find_food(
         max_travel_time,
         min_rating,
         min_reviews,
+        travel_mode,
     )
 
 async def llm_extract_food_query(user_text: str) -> tuple[str, str]:
@@ -119,6 +122,84 @@ async def llm_extract_food_query(user_text: str) -> tuple[str, str]:
     location = str(data.get("location", "") or "").strip()
     dish = str(data.get("dish", "") or "").strip()
     return (dish, location)
+
+
+async def llm_extract_food_filters(
+    user_text: str,
+    default_max_travel_time: int = 20,
+    default_min_rating: float = 3.5,
+    default_min_reviews: int = 0,
+    default_travel_mode: str = "walking",
+) -> tuple[int, float, int, str]:
+    prompt = (
+        "請從使用者句子中抽出餐廳篩選條件，只輸出 JSON：\n"
+        "{\"max_travel_time\": 15, \"min_rating\": 4.2, "
+        "\"min_reviews\": 1000, \"travel_mode\": \"driving\"}\n"
+        "欄位說明：\n"
+        "- max_travel_time: 分鐘（整數）\n"
+        "- min_rating: 星等（浮點數）\n"
+        "- min_reviews: 評論數量（整數）\n"
+        "- travel_mode: walking / driving / bicycling / transit\n"
+        "若未提到某條件，該欄位請省略或設為 null。\n"
+        f"使用者：{user_text}"
+    )
+    try:
+        raw = (await llm_generate(prompt)).strip()
+    except Exception:
+        return extract_food_filters(
+            user_text,
+            default_max_travel_time,
+            default_min_rating,
+            default_min_reviews,
+            default_travel_mode,
+        )
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        try:
+            start = raw.find("{")
+            end = raw.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                data = json.loads(raw[start:end + 1])
+            else:
+                raise ValueError("no json")
+        except Exception:
+            return extract_food_filters(
+                user_text,
+                default_max_travel_time,
+                default_min_rating,
+                default_min_reviews,
+                default_travel_mode,
+            )
+
+    max_travel_time = default_max_travel_time
+    min_rating = default_min_rating
+    min_reviews = default_min_reviews
+    travel_mode = default_travel_mode
+
+    if isinstance(data, dict):
+        if data.get("max_travel_time") is not None:
+            try:
+                max_travel_time = int(data["max_travel_time"])
+            except (TypeError, ValueError):
+                pass
+        if data.get("min_rating") is not None:
+            try:
+                min_rating = float(data["min_rating"])
+            except (TypeError, ValueError):
+                pass
+        if data.get("min_reviews") is not None:
+            try:
+                min_reviews = int(data["min_reviews"])
+            except (TypeError, ValueError):
+                pass
+        if data.get("travel_mode") is not None:
+            mode = str(data["travel_mode"]).strip().lower()
+            if mode in {"walking", "driving", "bicycling", "transit"}:
+                travel_mode = mode
+
+    return max_travel_time, min_rating, min_reviews, travel_mode
 
 def _strip_location_suffix(text: str) -> str:
     suffixes = ("附近", "周邊", "周圍", "附近的", "週邊", "週圍")
@@ -190,6 +271,12 @@ async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> str:
     meal_guess = meal_by_text or infer_meal_by_time(now)
     meal_src = "使用者描述" if meal_by_text else "當前時間推測"
     local_time = now.strftime("%H:%M")
+    max_travel_time, min_rating, min_reviews, travel_mode = await llm_extract_food_filters(user_text)
+    travel_mode_label = {
+        "walking": "步行",
+        "driving": "車程",
+        "bicycling": "騎車",
+    }.get(travel_mode, "移動")
 
     weather = None
     if location_label:
@@ -198,13 +285,21 @@ async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> str:
         weather = await get_current_weather(city_en)
     keyword = dish or user_text
     search_kw = keyword if meal_by_text else f"{meal_guess} {keyword}"
-    food_text = await find_food(keyword=search_kw, location=location_label)
+    food_text = await find_food(
+        keyword=search_kw,
+        location=location_label,
+        max_travel_time=max_travel_time,
+        min_rating=min_rating,
+        min_reviews=min_reviews,
+        travel_mode=travel_mode,
+    )
 
     prompt = "".join([
         "你是成大附近的美食推薦助理。\n",
         _style_hint(guild_id),
         f"使用者需求：{user_text}\n",
         f"搜尋地點：{location_label}\n",
+        f"條件：{max_travel_time} 分鐘內、評分 {min_rating}+、評論數 {min_reviews}+、交通方式 {travel_mode_label}\n",
         f"餐別：{meal_guess}（來源：{meal_src}）\n",
         f"現在時間（台灣）：{local_time}\n",
         f"天氣資料：{json.dumps(weather, ensure_ascii=False)}\n",
