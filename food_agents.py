@@ -266,7 +266,7 @@ async def _apply_style(text: str, guild_id: Optional[int]) -> str:
         return text
 
 
-async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> str:
+async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> tuple[str, str]:
     dish, location_label = await llm_extract_food_query(user_text)
     if not dish:
         dish = _fallback_extract_dish(user_text)
@@ -337,10 +337,11 @@ async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> str:
 
     try:
         answer = await llm_generate(prompt)
-        answer = await _apply_style(answer, guild_id)
-        return debug_prefix + "\n" + answer
+        styled_answer = await _apply_style(answer, guild_id)
+        return debug_prefix + "\n" + styled_answer, answer
     except Exception as e:
-        return f"{debug_prefix}\n抱歉，呼叫 LLM 失敗：{e}"
+        err = f"{debug_prefix}\n抱歉，呼叫 LLM 失敗：{e}"
+        return err, err
 
 
 async def run_weather_agent(user_text: str, guild_id: Optional[int] = None) -> str:

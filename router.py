@@ -28,8 +28,8 @@ async def run_agent(message) -> str:
     if label == "weather":
         return await run_weather_agent(user_text, guild_id)
     if label == "food":
-        ans = await run_food_agent(user_text, guild_id)
-        await send_food_result(message.channel.send, ans)
+        ans, raw_ans = await run_food_agent(user_text, guild_id)
+        await send_food_result(message.channel.send, ans, raw_ans)
         return ""
     if label == "spin":
         source = detect_spin_source(user_text)
@@ -43,7 +43,7 @@ async def run_agent(message) -> str:
     if is_weather_query(user_text):
         return await run_weather_agent(user_text, guild_id)
     if is_food_query(user_text):
-        ans = await run_food_agent(user_text, guild_id)
-        await send_food_result(message.channel.send, ans)
+        ans, raw_ans = await run_food_agent(user_text, guild_id)
+        await send_food_result(message.channel.send, ans, raw_ans)
         return ""
     return await run_chat_agent(user_text, guild_id)

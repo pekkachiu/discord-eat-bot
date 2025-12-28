@@ -71,8 +71,8 @@ async def eat(interaction: discord.Interaction, 需求: str):
     if interaction.guild_id is not None and not bot_enabled(interaction.guild_id):
         await interaction.followup.send("目前已關閉此伺服器的回覆功能。請用 /bot_toggle on 開啟。")
         return
-    ans = await run_food_agent(需求, interaction.guild_id)
-    await send_food_result(interaction.followup.send, ans)
+    ans, raw_ans = await run_food_agent(需求, interaction.guild_id)
+    await send_food_result(interaction.followup.send, ans, raw_ans)
 
 
 @dc.tree.command(name="bot_toggle", description="開/關 bot 回覆一般訊息（不影響 /eat），作用於此伺服器")
@@ -147,8 +147,8 @@ async def spin(
         return
 
     await interaction.followup.send(f"🔎 正在搜尋「{last_choice}」附近餐廳…")
-    ans = await run_food_agent(last_choice, interaction.guild_id)
-    await send_food_result(interaction.followup.send, ans)
+    ans, raw_ans = await run_food_agent(last_choice, interaction.guild_id)
+    await send_food_result(interaction.followup.send, ans, raw_ans)
 
 
 @dc.tree.command(name="nutrition", description="查詢食物的營養分析（Edamam）")
