@@ -19,10 +19,17 @@ def is_nutrition_query(text: str) -> bool:
     return any(k in text for k in kw)
 
 
+def is_spin_query(text: str) -> bool:
+    kw = ["轉盤", "抽", "隨機", "random", "spin", "wheel", "幫我選", "選一個", "挑一個", "決定"]
+    return any(k in text for k in kw)
+
+
 async def run_agent(message) -> str:
     user_text = message.content
     label = await llm_route_intent(user_text)
     guild_id = message.guild.id if message.guild else None
+    if label == "spin" and not is_spin_query(user_text):
+        label = ""
     if label == "nutrition":
         return await run_nutrition_agent(user_text, guild_id)
     if label == "weather":
