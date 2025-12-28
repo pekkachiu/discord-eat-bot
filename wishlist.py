@@ -52,8 +52,24 @@ def list_wishlist(guild_id: int) -> list[str]:
 
 def extract_restaurant_names(text: str) -> list[str]:
     names: list[str] = []
+    keycap_digits = {
+        "0️⃣": "0",
+        "1️⃣": "1",
+        "2️⃣": "2",
+        "3️⃣": "3",
+        "4️⃣": "4",
+        "5️⃣": "5",
+        "6️⃣": "6",
+        "7️⃣": "7",
+        "8️⃣": "8",
+        "9️⃣": "9",
+    }
     for line in text.splitlines():
-        m = re.match(r"^\s*\d+\.\s*(.+)$", line)
+        normalized = line
+        for k, v in keycap_digits.items():
+            if k in normalized:
+                normalized = normalized.replace(k, v)
+        m = re.match(r"^\s*\[?\s*\d+\s*[\]\).、．-]?\s*(.+)$", normalized)
         if not m:
             continue
         name = m.group(1).strip()
