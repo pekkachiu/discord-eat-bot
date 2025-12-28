@@ -304,6 +304,19 @@ async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> tupl
         min_reviews=min_reviews,
         travel_mode=travel_mode,
     )
+    if ("找不到符合條件" in food_text) or ("找不到" in food_text and "餐廳" in food_text):
+        tips = [
+            "把評論數門檻降低（例如 2000+ 改 500+ / 1000+）。",
+            "放寬移動時間或評分門檻（例如 20 分鐘改 30 分鐘）。",
+            "改用更一般的關鍵字或指定區域（例如「早午餐、拉麵、小吃、台南東區」）。",
+        ]
+        tip_text = "\n".join([f"- {t}" for t in tips])
+        message = (
+            f"{food_text}\n"
+            "建議你可以這樣調整搜尋方向：\n"
+            f"{tip_text}"
+        )
+        return debug_prefix + "\n" + message, message
 
     prompt = "".join([
         "你是成大附近的美食推薦助理，回覆要有人情味、口吻自然、資訊完整。\n",

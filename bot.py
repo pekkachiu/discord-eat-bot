@@ -68,9 +68,6 @@ dc = MyClient()
 @app_commands.describe(需求="例如：拉麵 200內 不要排隊 下雨想吃熱的")
 async def eat(interaction: discord.Interaction, 需求: str):
     await interaction.response.defer(thinking=True)
-    if interaction.guild_id is not None and not bot_enabled(interaction.guild_id):
-        await interaction.followup.send("目前已關閉此伺服器的回覆功能。請用 /bot_toggle on 開啟。")
-        return
     ans, raw_ans = await run_food_agent(需求, interaction.guild_id)
     await send_food_result(interaction.followup.send, ans, raw_ans)
 
@@ -88,7 +85,7 @@ async def bot_toggle(interaction: discord.Interaction, 狀態: str):
         return
     BOT_ENABLED_BY_GUILD[guild_id] = status_lower == "on"
     await interaction.response.send_message(
-        f"已{'開啟' if BOT_ENABLED_BY_GUILD[guild_id] else '關閉'}此伺服器的回覆功能（含聊天與 /eat）。",
+        f"已{'開啟' if BOT_ENABLED_BY_GUILD[guild_id] else '關閉'}此伺服器的一般聊天回覆功能。",
         ephemeral=True,
     )
 
@@ -106,9 +103,6 @@ async def spin(
     search: bool = True,
 ):
     guild_id = interaction.guild_id
-    if guild_id is not None and not bot_enabled(guild_id):
-        await interaction.response.send_message("目前已關閉此伺服器的回覆功能。請用 /bot_toggle on 開啟。", ephemeral=True)
-        return
 
     item_list = [s.strip() for s in items.split(",") if s.strip()] if items.strip() else []
     source = source.lower().strip()
