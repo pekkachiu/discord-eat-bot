@@ -86,7 +86,7 @@ async def bot_toggle(interaction: discord.Interaction, 狀態: str):
     BOT_ENABLED_BY_GUILD[guild_id] = status_lower == "on"
     await interaction.response.send_message(
         f"已{'開啟' if BOT_ENABLED_BY_GUILD[guild_id] else '關閉'}此伺服器的一般聊天回覆功能。",
-        ephemeral=True,
+        ephemeral=False,
     )
 
 
