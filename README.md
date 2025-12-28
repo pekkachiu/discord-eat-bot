@@ -1,4 +1,4 @@
-# Discord Hood Hunter Bot
+# Discord Food Hunter Bot
 
 ## Overview
 A Discord bot for food discovery that integrates Google Places search, optional LLM-driven suggestions, and USDA nutrition lookups. It helps users find nearby spots, get quick recommendations, and enrich results with nutrition info when available.
