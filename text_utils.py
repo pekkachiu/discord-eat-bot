@@ -24,7 +24,12 @@ def make_urls_clickable(text: str) -> str:
         return f"{label_clean}：{url}"
 
     text = MD_LINK.sub(md_repl, text)
-    text = BARE_URL.sub(lambda m: m.group(1), text)
+    def bare_repl(match: re.Match) -> str:
+        url = match.group(1)
+        # Trim trailing punctuation so the URL doesn't absorb following text.
+        return url.rstrip("。！？!?，,；;：:）)」』")
+
+    text = BARE_URL.sub(bare_repl, text)
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
@@ -72,7 +77,38 @@ def extract_city(text: str) -> str:
     for k, v in mapping.items():
         if k in text:
             return v
+    eng_loc = extract_english_location(text)
+    if eng_loc:
+        return eng_loc
     return "Tainan"
+
+
+def extract_english_location(text: str) -> str:
+    prep = re.search(r"\b(?:in|near|at|around)\s+([A-Za-z][A-Za-z .,'-]{1,50})", text, re.IGNORECASE)
+    match = prep.group(1) if prep else None
+    if not match:
+        eng = re.search(r"[A-Za-z][A-Za-z .,'-]{1,50}", text)
+        match = eng.group(0) if eng else ""
+    if not match:
+        return ""
+    cleaned = re.sub(r"[^\w\s'-]", " ", match)
+    words = cleaned.strip().split()
+    stop = {
+        "weather", "forecast", "temperature", "temp", "now", "today",
+        "please", "check", "in", "at", "for", "the", "a", "an",
+        "near", "around",
+    }
+    kept = [w for w in words if w.lower() not in stop]
+    food_words = {
+        "ramen", "sushi", "pizza", "burger", "steak", "noodle", "noodles",
+        "bbq", "coffee", "tea", "brunch", "breakfast", "lunch", "dinner",
+        "hotpot", "noodles", "noodle",
+    }
+    while kept and kept[-1].lower() in food_words:
+        kept.pop()
+    if not kept:
+        return ""
+    return " ".join(kept)
 
 
 # Find user mentioned city, return (English city, search location label)
@@ -104,6 +140,9 @@ def detect_food_location(text: str) -> Tuple[str, str]:
     for keywords, result in mapping:
         if any(k in text for k in keywords):
             return result
+    eng_loc = extract_english_location(text)
+    if eng_loc:
+        return (eng_loc, eng_loc)
     return ("Tainan", "國立成功大學")
 
 
