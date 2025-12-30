@@ -17,7 +17,7 @@ async def llm_generate(prompt: str) -> str:
         "Authorization": f"Bearer {LLM_API_KEY}",
         "Content-Type": "application/json",
     }
-    async with httpx.AsyncClient(timeout=60) as http:
+    async with httpx.AsyncClient(timeout=300) as http:
         resp = await http.post(url, json=payload, headers=headers)
         resp.raise_for_status()
         data = resp.json()
