@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 
 from config import DISCORD_TOKEN
-from food_agents import run_food_agent, _apply_style
+from food_agents import run_food_agent
 from nutrition import llm_translate_list, llm_translate_single, usda_food_nutrition
 from response_utils import send_food_result
 from router import run_agent
@@ -151,7 +151,6 @@ async def nutrition(interaction: discord.Interaction, 食物: str):
     await interaction.response.defer(thinking=True)
     ingr = await llm_translate_single(食物)
     result = await usda_food_nutrition(ingr)
-    result = await _apply_style(result, interaction.guild_id)
     await interaction.followup.send(result)
 
 
@@ -169,7 +168,6 @@ async def recipe_nutrition(interaction: discord.Interaction, 食材列表: str):
     else:
         note = ""
     result = await usda_food_nutrition(converted[0])
-    result = await _apply_style(result, interaction.guild_id)
     await interaction.followup.send(note + result)
 
 

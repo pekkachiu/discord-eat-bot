@@ -350,8 +350,7 @@ async def run_food_agent(user_text: str, guild_id: Optional[int] = None) -> tupl
 
     try:
         answer = await llm_generate(prompt)
-        styled_answer = await _apply_style(answer, guild_id)
-        return debug_prefix + "\n" + styled_answer, answer
+        return debug_prefix + "\n" + answer, answer
     except Exception as e:
         err = f"{debug_prefix}\n抱歉，呼叫 LLM 失敗：{e}"
         return err, err
@@ -373,7 +372,7 @@ async def run_weather_agent(user_text: str, guild_id: Optional[int] = None) -> s
     ])
     try:
         answer = await llm_generate(prompt)
-        return await _apply_style(answer, guild_id)
+        return answer
     except Exception as e:
         return f"抱歉，呼叫 LLM 失敗：{e}"
 
@@ -398,4 +397,4 @@ async def run_nutrition_agent(user_text: str, guild_id: Optional[int] = None) ->
     converted = await llm_translate_list([target])
     target = converted[0] if converted else target
     result = await usda_food_nutrition(target)
-    return await _apply_style(result, guild_id)
+    return result
